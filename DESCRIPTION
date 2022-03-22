@@ -1,17 +1,25 @@
 Package: gapminder.app
-Title: An Amazing Shiny App
+Title: GapMinder App
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "firstname",
-           family = "lastname",
-           role = c("aut", "cre"),
-           email = "your@email.com")
-Description: What the package does (one paragraph).
-License: What license is it under?
+    person("Jens Peder", "Meldgaard", , "jenspederm@gmail.com", role = c("cre", "aut"))
+Description: A Shiny application for the GapMinder Project.
+License: MIT + file LICENSE
+URL: https://github.com/JenspederM/gapminder.app
+BugReports: https://github.com/JenspederM/gapminder.app/issues
 Imports: 
     config (>= 0.3.1),
+    data.table,
     golem (>= 0.3.2),
-    shiny (>= 1.7.1)
+    httr,
+    logger,
+    magrittr,
+    R6,
+    shiny (>= 1.7.1),
+    tibble
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
