@@ -2,15 +2,23 @@
 #'
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
-#' @import shiny
+#' @import shiny shinythemes
 #' @noRd
 app_ui <- function(request) {
   tagList(
     # Leave this function for adding external resources
     golem_add_external_resources(),
     # Your application UI logic
-    fluidPage(
-      h1("gapminder.app")
+    navbarPage("Navbar!",
+               tabPanel("DataHandler", mod_DataHandler_ui("DataHandler_1")),
+               tabPanel("Summary",
+                        verbatimTextOutput("summary")
+               ),
+               navbarMenu("More",
+                          tabPanel("Table",
+                                   DT::dataTableOutput("table")
+                          )
+               )
     )
   )
 }
@@ -28,7 +36,7 @@ golem_add_external_resources <- function() {
     "www",
     app_sys("app/www")
   )
-
+  
   tags$head(
     favicon(),
     bundle_resources(

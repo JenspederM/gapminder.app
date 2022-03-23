@@ -1,4 +1,4 @@
-#' DataProvider
+#' DDFProvider
 #'  
 #' @description An R6 class responsible for providing data to the application.
 #' 
@@ -15,61 +15,101 @@
 #' "'GET /data/?key=key':   Downloads the CSV file of the whole dataset."
 #'
 #' @docType class
-#' @importFrom tibble as_tibble
 #' @importFrom magrittr `%>%`
-#' @importFrom data.table rbindlist
-#' @importFrom logger log_info
 #' @importFrom httr GET content
 #' @importFrom R6 R6Class
+#' @import logger
+#' @import data.table
 #'
-#' @return DataProvider object
+#' @return DDFProvider object
 #'
 #' @export
 
-ddf_provider <- R6Class(
-  "DdfProvider",
+DDFProvider <- R6Class(
+  "DDFProvider",
   public = list(
+    #' @field repos List of repositories in GitHub Organization
     repos = NULL,
-    initialize = function(org = "open-numbers", log_level = INFO) {
-      log_threshold(log_level, namespace = "ddf_provider")
+    #' @description 
+    #' initalize
+    #' @param org GitHub Organization
+    #' @param log_level Log Level, see logger::log_level()
+    #' @param debug Enable debugging mode 
+    #' @return DDFProvider object
+    #' 
+    initialize = function(org = "open-numbers", log_level = INFO, debug=FALSE) {
+      log_threshold(log_level)
       private$.org = org
-      self$repos = private$.call_api(sprintf("orgs/%s/repos", private$.org))$name
+      private$.reset(debug = debug)
+      self
     },
+    #' @description 
+    #' get_all_repos
+    #' @param repos List of repositories to get
+    #' @return data.table
+    #' 
     get_all_repos = function(repos = self$repos) {
-      lapply(repos, self$get_repo) %>% 
+      private$.data <- lapply(repos, self$get_repo) %>% 
         setNames(repos) %>%
         rbindlist(idcol = "")
     },
+    #' get_repo
+    #' @param repo Name of repository to get
+    #' @return data.table
+    #' 
     get_repo = function(repo) {
-      endpoint <- sprintf("repos/%s/%s/contents/", private$.org, repo)
-      private$.call_api(endpoint)
+      if (is.null(private$.data[[repo]]) || isTRUE(force)) {
+        endpoint <- sprintf("repos/%s/%s/contents/", private$.org, repo)
+        private$.data[[repo]] <- private$.call_api(endpoint)
+      } 
+      private$.data
     },
-    read_ddf = function(repo, ddf_type="", download_all=FALSE) {
+    #' read_ddf
+    #' @param repo Name of repository to read DDF files from
+    #' @param resource DDF-resource to download, default to "datapoints"
+    #' @param prefetch Prefetch all DDF-resources as a column of data.tables
+    #' @return data.table
+    #' 
+    read_ddf = function(repo, resource=c("datapoints", "concepts", "entities"), prefetch=FALSE) {
+      resource <- match.arg(resource)
       repo <- self$get_repo(repo)
-      ddf_type <- paste0("ddf--", ddf_type)
-      dt <- repo[grepl(ddf_type, name) & !is.na(download_url), .(name, download_url)]
-      if (download_all) {
+      resource <- paste0("ddf--", resource)
+      dt <- repo[grepl(resource, name) & !is.na(download_url), .(name, download_url)]
+      if (prefetch) {
         dt[, data := lapply(download_url, fread)]
       }
       dt
+    },
+    #' log
+    #' @param msg Message to log
+    #' @param log_level Log Level
+    #' 
+    log = function(msg = "Hello!", log_level = INFO) {
+      print(msg)
     }
   ),
   private = list(
-    .debug_data = structure(list(
-      name = c(".gitignore", "README.md", "datapackage.json"),
-      path = c(".gitignore", "README.md", "datapackage.json"),
-      sha = c("3164a0816e3d1f6b6a4a58b51bb7e398b505a255", 
-              "f7921d1494676ff8ce7e681765ff4ab6b08d2dad",
-              "ee5fb746604d3f4485745540ae969bf1d11b40c0")),
-      row.names = c(NA, -3L), class = c("data.table", "data.frame")),
+    .data = NULL,
+    .debug = FALSE,
     .org = "",
     .api_url = "https://api.github.com",
+    .reset = function(debug=FALSE) {
+      
+      if (isTRUE(debug)) {
+        private$.debug = TRUE
+        log_threshold(DEBUG)
+        self$repos = unlist(strsplit("this is a test", " "))
+      } else {
+        self$repos = private$.call_api(sprintf("orgs/%s/repos", private$.org))$name
+      }
+      
+      private$.data = vector("list", length = length(self$repos)) %>% setNames(self$repos)
+    },
     .call_api = function(endpoint, base_url=private$.api_url, as_datatable=TRUE, debug=FALSE) {
       api_call <- sprintf("%s/%s", base_url, endpoint)
       log_info(sprintf("Calling API at: %s", api_call))
       if (isTRUE(debug)) {
         log_debug("Entering debugging")
-        
       }
       req <- GET(api_call)
       if (req$status_code == 200) {
@@ -100,7 +140,8 @@ ddf_provider <- R6Class(
       )[]
     }
   ),
-  active= list(
+  active = list(
+    #' @field org GitHub Organization
     org = function(value) {
       if (missing(value)) {
         private$.org
@@ -108,6 +149,7 @@ ddf_provider <- R6Class(
         stop("org is read-only.", call. = FALSE)
       }
     },
+    #' @field org_url Organization URL
     org_url = function(value) {
       if (missing(value)) {
         sprintf("%s/orgs/%s", private$.api_url, private$.org)
@@ -115,18 +157,21 @@ ddf_provider <- R6Class(
         stop("org_url is read-only.", call. = FALSE)
       }
     },
+    #' @field api_url API URL
     api_url = function(value) {
       if (missing(value)) {
         private$.api_url
       } else {
-        stop("git_url is read-only.", call. = FALSE)
+        stop("api_url is read-only.", call. = FALSE)
+      }
+    },
+    #' @field data Data
+    data = function(value) {
+      if (missing(value)) {
+        private$.data
+      } else {
+        stop("data is read-only.", call. = FALSE)
       }
     }
   )
 )
-
-provider <- ddf_provider$new()
-repo_df<- provider$get_repo(p$repos[2])
-ddf <- provider$read_ddf(p$repos[2], ddf_type = "concepts", download_all = TRUE)
-ddf$data
-repo_df
