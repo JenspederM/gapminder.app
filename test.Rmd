@@ -15,10 +15,61 @@ library(countrycode)
 ```
 
 ```{r}
+library(data.table)
+library(magrittr)
+library(janitor)
+library(ggplot2)
+
+df <- fread("/Users/jenspedermeldgaard/Downloads/testCSV.csv")
+df[, Value := as.double(dplyr::coalesce(gsub(",", ".", Value), StringValue))]
+
+df <- dcast(df[, .(TimeStamp, GUID, Description, Value = )], TimeStamp+GUID~Description, value.var = "Value")
+df %>% ggplot(aes(TimeStamp, Value)) +geom_line() + facet_wrap(~Description+MeasUnit)
+df
+
+
+```
+
+
+```{r}
+dcast(df[, .(TimeStamp, GUID, Description, Value = StringValue)], TimeStamp+GUID~Description, value.var = "Value") %>% 
+  .[, .(TimeStamp, GUID, gr32PillarPlacementHumidity = as.double(gsub(",", ".", gr32PillarPlacementHumidity)))]
+```
+
+
+```{r}
+df
+```
+
+
+
+
+```{r}
 source("./R/fct_DDFProvider.R")
 
 obj <- DDFProvider$new(debug=TRUE)
-obj$repos  
+obj$repos
+
+repo <- obj$get_repo(obj$repos[3]$name)[startsWith(name, "ddf"), ]
+repo
+repo[, c("name", "file_type") := tstrsplit(substring(name, 6), "\\.")]
+repo[, tstrsplit(name, "--")]
+repo
+
+for (n in repo$name) {
+  
+}
+
+
+
+tstrsplit(repo$name, "--")
+dl <- repo[, .(name, data=lapply(download_url, fread), download_url)]
+dl$data[[2]][geo %in% sample(geo, 10)] %>% ggplot() + geom_line(aes(time, child_mortality_0_5_year_olds_dying_per_1000_born, color=geo))
+
+```
+
+```{r}
+obj$repos[, .(id, name, description)]
 ```
 
 

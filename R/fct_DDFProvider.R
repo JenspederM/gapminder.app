@@ -28,8 +28,7 @@
 DDFProvider <- R6Class(
   "DDFProvider",
   public = list(
-    #' @field repos List of repositories in GitHub Organization
-    repos = NULL,
+    
     #' @description 
     #' initalize
     #' @param org GitHub Organization
@@ -48,10 +47,17 @@ DDFProvider <- R6Class(
     #' @param repos List of repositories to get
     #' @return data.table
     #' 
-    get_all_repos = function(repos = self$repos) {
-      private$.data <- lapply(repos, self$get_repo) %>% 
-        setNames(repos) %>%
-        rbindlist(idcol = "")
+    get_all_repos = function(repos = NULL) {
+      if (is.null(repos)) {
+        repo_list <- private$.repos$name
+      } else {
+        stopifnot(is.character(repos))
+        repo_list <- repos
+      }
+      
+      private$.data <- lapply(repo_list, self$get_repo) %>% 
+        setNames(repo_list) %>%
+        rbindlist(idcol = "repository")
     },
     #' get_repo
     #' @param repo Name of repository to get
@@ -62,7 +68,7 @@ DDFProvider <- R6Class(
         endpoint <- sprintf("repos/%s/%s/contents/", private$.org, repo)
         private$.data[[repo]] <- private$.call_api(endpoint)
       } 
-      private$.data
+      private$.data[[repo]]
     },
     #' read_ddf
     #' @param repo Name of repository to read DDF files from
@@ -70,14 +76,13 @@ DDFProvider <- R6Class(
     #' @param prefetch Prefetch all DDF-resources as a column of data.tables
     #' @return data.table
     #' 
-    read_ddf = function(repo, resource=c("datapoints", "concepts", "entities"), prefetch=FALSE) {
+    get_ddf = function(repo, resource=c("datapoints", "concepts", "entities"), prefetch=FALSE) {
       resource <- match.arg(resource)
       repo <- self$get_repo(repo)
       resource <- paste0("ddf--", resource)
       dt <- repo[grepl(resource, name) & !is.na(download_url), .(name, download_url)]
-      if (prefetch) {
-        dt[, data := lapply(download_url, fread)]
-      }
+      dt[, data := lapply(download_url, fread)]
+      setcolorder(dt, c("name", "data"))
       dt
     },
     #' log
@@ -89,28 +94,34 @@ DDFProvider <- R6Class(
     }
   ),
   private = list(
+    .repos = NULL,
     .data = NULL,
+    .ddf = NULL,
     .debug = FALSE,
     .org = "",
     .api_url = "https://api.github.com",
+    
     .reset = function(debug=FALSE) {
-      
       if (isTRUE(debug)) {
         private$.debug = TRUE
         log_threshold(DEBUG)
-        self$repos = unlist(strsplit("this is a test", " "))
+        repos <- debugging
       } else {
-        self$repos = private$.call_api(sprintf("orgs/%s/repos", private$.org))$name
+        repos <- private$.call_api(sprintf("orgs/%s/repos", private$.org))
       }
+      private$.repos <- repos[, .(name, description, size, created_at, 
+                                  updated_at, watchers, language, clone_url)]
       
-      private$.data = vector("list", length = length(self$repos)) %>% setNames(self$repos)
+      private$.data = vector("list", length = length(private$.repos$name)) %>% 
+        setNames(private$.repos$name)
     },
-    .call_api = function(endpoint, base_url=private$.api_url, as_datatable=TRUE, debug=FALSE) {
+    
+    .call_api = function(endpoint, 
+                         base_url=private$.api_url, 
+                         as_datatable=TRUE, 
+                         debug=FALSE) {
       api_call <- sprintf("%s/%s", base_url, endpoint)
       log_info(sprintf("Calling API at: %s", api_call))
-      if (isTRUE(debug)) {
-        log_debug("Entering debugging")
-      }
       req <- GET(api_call)
       if (req$status_code == 200) {
         log_info("Request successful")
@@ -127,6 +138,7 @@ DDFProvider <- R6Class(
         log_error("Message:\n", paste0(content(req), collapse = "\n"))
       }
     },
+    
     .response_to_datatable = function(response) {
       log_info("Casting response to row-bound data.table (with fill=True)")
       rbindlist(
@@ -141,6 +153,14 @@ DDFProvider <- R6Class(
     }
   ),
   active = list(
+    #' @field repos List of repositories in GitHub Organization
+    repos = function(value) {
+      if (missing(value)) {
+        private$.repos
+      } else {
+        stop("repos is read-only.", call. = FALSE)
+      }
+    },
     #' @field org GitHub Organization
     org = function(value) {
       if (missing(value)) {

@@ -22,16 +22,11 @@ API Usage:
 "'GET /data/?key=key&year=year':   Gets the values for each available country in the dataset, for the specified year.", 
 "'GET /data/?key=key':   Downloads the CSV file of the whole dataset."
 }
-\section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{repos}}{List of repositories in GitHub Organization}
-}
-\if{html}{\out{</div>}}
-}
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
+\item{\code{repos}}{List of repositories in GitHub Organization}
+
 \item{\code{org}}{GitHub Organization}
 
 \item{\code{org_url}}{Organization URL}
@@ -48,7 +43,7 @@ API Usage:
 \item \href{#method-new}{\code{DDFProvider$new()}}
 \item \href{#method-get_all_repos}{\code{DDFProvider$get_all_repos()}}
 \item \href{#method-get_repo}{\code{DDFProvider$get_repo()}}
-\item \href{#method-read_ddf}{\code{DDFProvider$read_ddf()}}
+\item \href{#method-get_ddf}{\code{DDFProvider$get_ddf()}}
 \item \href{#method-log}{\code{DDFProvider$log()}}
 \item \href{#method-clone}{\code{DDFProvider$clone()}}
 }
@@ -83,7 +78,7 @@ DDFProvider object
 \subsection{Method \code{get_all_repos()}}{
 get_all_repos
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DDFProvider$get_all_repos(repos = self$repos)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{DDFProvider$get_all_repos(repos = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -121,11 +116,11 @@ read_ddf
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-read_ddf"></a>}}
-\if{latex}{\out{\hypertarget{method-read_ddf}{}}}
-\subsection{Method \code{read_ddf()}}{
+\if{html}{\out{<a id="method-get_ddf"></a>}}
+\if{latex}{\out{\hypertarget{method-get_ddf}{}}}
+\subsection{Method \code{get_ddf()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DDFProvider$read_ddf(
+\if{html}{\out{<div class="r">}}\preformatted{DDFProvider$get_ddf(
   repo,
   resource = c("datapoints", "concepts", "entities"),
   prefetch = FALSE

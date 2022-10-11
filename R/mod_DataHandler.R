@@ -6,9 +6,9 @@
 #'
 #' @noRd 
 #'
+#' @importFrom DT DTOutput renderDT
 #' @importFrom shiny NS tagList 
 #' @importFrom shinycssloaders withSpinner
-#' @import DT 
 mod_DataHandler_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -19,7 +19,8 @@ mod_DataHandler_ui <- function(id){
     ),
     br(),
     col_12(
-      withSpinner(uiOutput(ns('repos_table')))
+      DT::DTOutput(ns("file_table"))
+      #withSpinner(uiOutput(ns('repos_table')))
     ),
     col_12(
       withSpinner(verbatimTextOutput(ns("debug")))
@@ -38,12 +39,20 @@ mod_DataHandler_server <- function(id){
       DDFProvider$new(debug = F)
     })
     
+    output$file_table <- DT::renderDT({
+      ddfObj()$repos
+    }, server = TRUE, extensions = 'Buttons', options = list(
+      dom = 'Bfrtip',
+      buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+      scrollX = TRUE
+    ))
+    
     output$repo_select <- renderUI({
       selectizeInput(
         ns("chosenRepo"), 
         sprintf("Repositories in %s", ddfObj()$org),
-        choices = ddfObj()$repos, 
-        selected = ddfObj()$repos[1],
+        choices = ddfObj()$repos$name, 
+        selected = ddfObj()$repos[1]$name,
         multiple = TRUE,
         width="100%"
       )
@@ -55,12 +64,7 @@ mod_DataHandler_server <- function(id){
                 lapply(
                   input$chosenRepo, 
                   function(repo) {
-                    tabPanel(
-                      title=repo, 
-                      DT::renderDT({
-                        ddfObj()$data[[repo]]
-                      })
-                    )
+                    tabPanel(title=repo, DT::renderDT({ddfObj()$data[[repo]]}, server = TRUE))
                   }
                 )
               )
@@ -72,18 +76,15 @@ mod_DataHandler_server <- function(id){
         lapply(
           input$chosenRepo, 
           function(repo) {
-            tabPanel(
-              title=repo, 
-              DT::renderDT({
-                ddfObj()$data[[repo]]
-              })
-            )
+            tabPanel(title=repo, DT::renderDT({ddfObj()$data[[repo]]}, server = TRUE))
           }
         )
       })
     })
     
-    output$debug <- renderText({ input$chosenRepo })
+    output$debug <- renderText({ 
+      input$file_table_rows_selected
+    })
     
     observeEvent(input$getData, {
       print("Getting data")

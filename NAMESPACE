@@ -2,11 +2,12 @@
 
 export(DDFProvider)
 export(run_app)
-import(DT)
 import(data.table)
 import(logger)
 import(shiny)
 import(shinythemes)
+importFrom(DT,DTOutput)
+importFrom(DT,renderDT)
 importFrom(R6,R6Class)
 importFrom(golem,activate_js)
 importFrom(golem,add_resource_path)
